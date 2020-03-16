@@ -5,33 +5,41 @@ package graph
 
 import (
 	"context"
-	"fmt"
-	"math/rand"
 
+	"github.com/bellwood4486/gqlgen-todos/db"
 	"github.com/bellwood4486/gqlgen-todos/graph/generated"
 	"github.com/bellwood4486/gqlgen-todos/graph/model"
 )
 
-func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	todo := &model.Todo{
-		Text:   input.Text,
-		ID:     fmt.Sprintf("T%d", rand.Int()),
-		UserID: input.UserID,
-	}
-	r.todos = append(r.todos, todo)
-	return todo, nil
-}
-
 func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	return r.todos, nil
+	res := db.LogAndQuery(r.Conn, "SELECT id, text, user_id FROM todos")
+	defer res.Close()
+
+	var todos []*model.Todo
+	for res.Next() {
+		var todo model.Todo
+		if err := res.Scan(&todo.ID, &todo.Text, &todo.UserID); err != nil {
+			panic(err)
+		}
+		todos = append(todos, &todo)
+	}
+
+	return todos, nil
 }
 
 func (r *todoResolver) User(ctx context.Context, obj *model.Todo) (*model.User, error) {
-	return &model.User{ID: obj.UserID, Name: "user " + obj.UserID}, nil
-}
+	res := db.LogAndQuery(r.Conn, "SELECT id, name FROM users WHERE id = $1", obj.UserID)
+	defer res.Close()
 
-// Mutation returns generated.MutationResolver implementation.
-func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
+	if !res.Next() {
+		return nil, nil
+	}
+	var user model.User
+	if err := res.Scan(&user.ID, &user.Name); err != nil {
+		panic(err)
+	}
+	return &user, nil
+}
 
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
@@ -39,6 +47,5 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 // Todo returns generated.TodoResolver implementation.
 func (r *Resolver) Todo() generated.TodoResolver { return &todoResolver{r} }
 
-type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type todoResolver struct{ *Resolver }
