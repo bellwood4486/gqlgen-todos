@@ -6,6 +6,7 @@ package graph
 import (
 	"context"
 
+	"github.com/bellwood4486/gqlgen-todos/dataloader"
 	"github.com/bellwood4486/gqlgen-todos/db"
 	"github.com/bellwood4486/gqlgen-todos/graph/generated"
 	"github.com/bellwood4486/gqlgen-todos/graph/model"
@@ -27,7 +28,7 @@ func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
 	return todos, nil
 }
 
-func (r *todoResolver) User(ctx context.Context, obj *model.Todo) (*model.User, error) {
+func (r *todoResolver) UserRaw(ctx context.Context, obj *model.Todo) (*model.User, error) {
 	res := db.LogAndQuery(r.Conn, "SELECT id, name FROM users WHERE id = $1", obj.UserID)
 	defer res.Close()
 
@@ -39,6 +40,10 @@ func (r *todoResolver) User(ctx context.Context, obj *model.Todo) (*model.User, 
 		panic(err)
 	}
 	return &user, nil
+}
+
+func (r *todoResolver) UserLoader(ctx context.Context, obj *model.Todo) (*model.User, error) {
+	return dataloader.For(ctx).UserById.Load(obj.UserID)
 }
 
 // Query returns generated.QueryResolver implementation.

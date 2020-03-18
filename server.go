@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/bellwood4486/gqlgen-todos/dataloader"
+
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/bellwood4486/gqlgen-todos/graph"
@@ -44,7 +46,7 @@ func main() {
 	}}))
 
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
+	http.Handle("/query", dataloader.Middleware(db, srv))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))

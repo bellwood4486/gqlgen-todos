@@ -6,7 +6,8 @@ type Todo {
   id: ID!
   text: String!
   done: Boolean!
-  user: User!
+  userRaw: User!
+  userLoader: User!
 }
 
 type User {
